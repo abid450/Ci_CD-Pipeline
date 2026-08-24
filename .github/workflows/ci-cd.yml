@@ -1,34 +1,39 @@
-name: Django CI/CD Pipeline
+
+
+
+name: Django CI Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
 
 jobs:
-  ci:
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [3.12]
 
     steps:
-    - uses: actions/checkout@v4
-    
+    - name: Checkout code
+      uses: actions/checkout@v4
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-    
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install setuptools wheel
-        # ✅ pyproject.toml 
         pip install -e .
-        pip install pytest pytest-django flake8 black isort
-    
+        pip install pytest pytest-django flake8 black isort coverage
+
+    - name: Lint with flake8
+      run: flake8 . --count --max-complexity=10 --max-line-length=127 --statistics
+
     - name: Run migrations
       env:
         DJANGO_SETTINGS_MODULE: actions.settings
@@ -37,11 +42,18 @@ jobs:
       run: |
         python manage.py makemigrations --noinput
         python manage.py migrate --noinput
-    
-    - name: Run tests
+
+    - name: Run tests with coverage
       env:
         DJANGO_SETTINGS_MODULE: actions.settings
         SECRET_KEY: test-secret-key
         DEBUG: True
       run: |
-        python manage.py test -v 2 --noinput
+        coverage run --source='.' manage.py test -v 2
+        coverage report -m
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: coverage.xml
