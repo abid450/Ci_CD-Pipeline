@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: bookstore_web
+    restart: unless-stopped
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - sqlite_data:/app/data  
+      - static_volume:/app/staticfiles
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_DEBUG=${DJANGO_DEBUG:-True}
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-test-key-12345}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost,127.0.0.1,*}
+    networks:
+      - bookstore_network
+
+volumes:
+  sqlite_data:    
+  static_volume:
+
+networks:
+  bookstore_network:
+    driver: bridge
